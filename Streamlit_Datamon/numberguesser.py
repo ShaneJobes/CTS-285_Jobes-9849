@@ -19,6 +19,7 @@ def get_difficulty_range(choice):
 
 
 def generate_missing_number_problem(min_val, max_val, impossible=False):
+    """Generate a math equation with a missing value (or all missing in impossible mode)."""
     operations = ['+', '-', '*', '/']
     operation = random.choice(operations)
 
@@ -75,8 +76,13 @@ if "impossible_mode" not in st.session_state:
     st.session_state.impossible_mode = False
 if "game_over" not in st.session_state:
     st.session_state.game_over = False
+if "in_game" not in st.session_state:
+    st.session_state.in_game = False
+if "answered" not in st.session_state:
+    st.session_state.answered = False
 
-# Difficulty selection
+
+# --- Difficulty Selection ---
 difficulty = st.selectbox(
     "Choose your difficulty:",
     [
@@ -89,18 +95,39 @@ difficulty = st.selectbox(
     key="difficulty",
 )
 
-# Start or restart
-if st.button("🎮 Start / Next Problem"):
-    min_val, max_val, impossible = get_difficulty_range(difficulty)
-    st.session_state.problem, st.session_state.correct_answer = generate_missing_number_problem(
-        min_val, max_val, impossible
-    )
-    st.session_state.impossible_mode = impossible
-    st.session_state.question_num += 1
-    st.session_state.feedback = ""
 
-# Game content
-if not st.session_state.game_over and st.session_state.problem:
+# --- Start/Quit Button ---
+col1, col2 = st.columns(2)
+with col1:
+    if not st.session_state.in_game:
+        if st.button("🎮 Start Game"):
+            st.session_state.in_game = True
+            st.session_state.fails = 0
+            st.session_state.question_num = 1
+            st.session_state.problem = None
+            st.session_state.correct_answer = None
+            st.session_state.game_over = False
+            st.session_state.answered = False
+    else:
+        if st.button("❌ Quit Game"):
+            st.session_state.in_game = False
+            st.session_state.problem = None
+            st.session_state.correct_answer = None
+            st.session_state.game_over = False
+            st.session_state.answered = False
+            st.rerun()
+
+
+# --- Main Game Logic ---
+if st.session_state.in_game and not st.session_state.game_over:
+    if not st.session_state.problem:
+        min_val, max_val, impossible = get_difficulty_range(difficulty)
+        st.session_state.problem, st.session_state.correct_answer = generate_missing_number_problem(
+            min_val, max_val, impossible
+        )
+        st.session_state.impossible_mode = impossible
+        st.session_state.answered = False
+
     st.markdown(f"### Problem {st.session_state.question_num}: {st.session_state.problem}")
 
     if st.session_state.impossible_mode:
@@ -109,43 +136,62 @@ if not st.session_state.game_over and st.session_state.problem:
         user_input = st.text_input("Enter your answer:", key="input_normal")
 
     if st.button("Submit Answer"):
-        if st.session_state.impossible_mode:
-            cleaned = user_input.replace(",", " ").strip()
-            parts = cleaned.split()
-            if len(parts) != 3:
-                st.warning("Enter three numbers separated by commas or spaces.")
+        if st.session_state.answered:
+            st.info("You already answered this question! Click **Next Question** to continue.")
+        else:
+            st.session_state.answered = True
+            if st.session_state.impossible_mode:
+                cleaned = user_input.replace(",", " ").strip()
+                parts = cleaned.split()
+                if len(parts) != 3:
+                    st.warning("Enter three numbers separated by commas or spaces.")
+                    st.session_state.answered = False
+                else:
+                    try:
+                        user_answers = [float(p) if "." in p else int(p) for p in parts]
+                        a_corr, b_corr, res_corr = st.session_state.correct_answer
+                        correct = all(abs(u - c) < 0.001 for u, c in zip(user_answers, (a_corr, b_corr, res_corr)))
+                        if correct:
+                            st.success("✅ Correct!")
+                        else:
+                            st.error(f"❌ Incorrect. Correct answers: {a_corr}, {b_corr}, {res_corr}")
+                            st.session_state.fails += 1
+                    except ValueError:
+                        st.warning("Please enter valid numbers.")
+                        st.session_state.answered = False
             else:
                 try:
-                    user_answers = [float(p) if "." in p else int(p) for p in parts]
-                    a_corr, b_corr, res_corr = st.session_state.correct_answer
-                    correct = all(abs(u - c) < 0.001 for u, c in zip(user_answers, (a_corr, b_corr, res_corr)))
-                    if correct:
+                    user_val = float(user_input) if "." in user_input else int(user_input)
+                    correct_val = st.session_state.correct_answer
+                    if abs(user_val - correct_val) < 0.001:
                         st.success("✅ Correct!")
                     else:
-                        st.error(f"❌ Incorrect. Correct answers: {a_corr}, {b_corr}, {res_corr}")
+                        st.error(f"❌ Incorrect. The correct answer was {correct_val}.")
                         st.session_state.fails += 1
                 except ValueError:
-                    st.warning("Please enter valid numbers.")
-        else:
-            try:
-                user_val = float(user_input) if "." in user_input else int(user_input)
-                correct_val = st.session_state.correct_answer
-                if abs(user_val - correct_val) < 0.001:
-                    st.success("✅ Correct!")
-                else:
-                    st.error(f"❌ Incorrect. The correct answer was {correct_val}.")
-                    st.session_state.fails += 1
-            except ValueError:
-                st.warning("Please enter a valid number.")
+                    st.warning("Please enter a valid number.")
+                    st.session_state.answered = False
 
-        # Check for game over
-        if st.session_state.fails >= 3:
-            st.session_state.game_over = True
-            st.error("💀 Game Over! You reached 3 incorrect answers.")
-        else:
-            st.info(f"Lives remaining: {3 - st.session_state.fails}")
+            if st.session_state.fails >= 3:
+                st.session_state.game_over = True
+                st.error("💀 Game Over! You reached 3 incorrect answers.")
+            else:
+                st.info(f"Lives remaining: {3 - st.session_state.fails}")
 
-# Reset game
+    # Only show "Next Question" if the question has been answered and game not over
+    if st.session_state.answered and not st.session_state.game_over:
+        with col2:
+            if st.button("➡️ Next Question"):
+                min_val, max_val, impossible = get_difficulty_range(difficulty)
+                st.session_state.problem, st.session_state.correct_answer = generate_missing_number_problem(
+                    min_val, max_val, impossible
+                )
+                st.session_state.impossible_mode = impossible
+                st.session_state.answered = False
+                st.session_state.question_num += 1
+                st.rerun()
+
+# --- Game Over Reset ---
 if st.session_state.game_over:
     if st.button("🔁 Play Again"):
         st.session_state.fails = 0
@@ -153,4 +199,6 @@ if st.session_state.game_over:
         st.session_state.problem = None
         st.session_state.correct_answer = None
         st.session_state.game_over = False
-        st.experimental_rerun()
+        st.session_state.in_game = True
+        st.session_state.answered = False
+        st.rerun()
