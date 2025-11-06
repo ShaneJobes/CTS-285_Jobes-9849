@@ -1,0 +1,3 @@
+After researching flask and streamlit I chose streamlit because it is very similar to JOptionPane, which I have more familiarity with than HTML.
+Flask uses HTML and Python combined to create the webpage and follow the logic of the program. I have not used much HTML and while I am some what familiar with it,
+I can understand the streamlit quicker. I expect to have to redo the position and size of the items on the screen, to make the user experience smoother. 
