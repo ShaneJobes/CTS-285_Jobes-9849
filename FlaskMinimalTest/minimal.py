@@ -1,7 +1,11 @@
-from flask import Flask
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
 @app.route("/")
-def hello_world():
-    return "<h1>Hello, World!</h1> <p>This Flask application is able to be run!</p>"
+def index():
+    name = "Moon Pie 🐈"
+    return render_template('index.html', name=name)
+
+if __name__ == "__main__":
+    app.run(debug=True)
