@@ -8,6 +8,9 @@ if "users" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = 'main'
 
+if "calc_display" not in st.session_state:
+    st.session_state.calc_display = "0"
+
 if st.session_state.page == 'main':
     st.title ("welcome!")
     st.write("Please choose an option:")
@@ -23,8 +26,8 @@ elif st.session_state.page == "login":
 
 
     # Username and password input
-    username = st.button("Username")
-    password = st.button("Password", type="password")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
     # Login logic
     if st.button("Login"):
@@ -33,11 +36,12 @@ elif st.session_state.page == "login":
         else:
             if st.session_state.users[username]["password"] == password:
                 st.success("Login successful!")
+                st.session_state.page = "calculator"
             else:
                 st.error("Incorrect password.")
     
     if st.button("Back"):
-        st.sessoin_state.page = "main"
+        st.session_state.page = "main"
 
 # Registration page
 elif st.session_state.page == "register":
@@ -48,7 +52,7 @@ elif st.session_state.page == "register":
     reg_email = st.text_input("Enter your email.")
 
     if st.button("Submit Registration"):
-        if username in st.session_state.users:
+        if reg_username in st.session_state.users:
             st.error("Username already exists")
         elif not reg_username or not reg_password or not reg_email:
             st.error("All fields must be filled out.")
@@ -61,5 +65,49 @@ elif st.session_state.page == "register":
 
 
     if st.button("Back"):
-        st.sessoin_state.page = "main"
+        st.session_state.page = "main"
+
+elif st.session_state.page == "calculator":
+    st.title("Calculator")
+
+    st.text_input("Display", value=st.session_state.calc_display, disabled=True, key="display")
+    
+    buttons = [
+        ["1", "2", "3"],
+        ["4", "5", "6"],
+        ["7", "8", "9"],
+        ["C", "0", "="],
+    ]
+    operator_buttons = ["+", "-", "*", "/"]
+
+    def pressButton(value):
+        if value == "C":
+            st.session_state.calc_display = "0"
+        elif value == "=":
+            try:
+                st.session_state.calc_display = str(eval(st.session_state.calc_display))
+            except:
+                st.session_state.calc_display = "ERROR"
+        else:
+            if st.session_state.calc_display == "0" or st.session_state.calc_display == "ERROR":
+                st.session_state.calc_display = value
+            else:
+                st.session_state.calc_display += value
+
+    for r, row in enumerate(buttons):
+        cols = st.columns(3)
+        for c, label in enumerate(row):
+            if cols[c].button(label, key=f"btn_{r}_{c}_{label}"):
+                pressButton(label)
+
+    st.write("### Operators")
+
+    # Operator buttons
+    op_cols = st.columns(4)
+    for i, op in enumerate(operator_buttons):
+        if op_cols[i].button(op, key=f"op_btn_{i}_{op}"):
+            pressButton(op)
         
+    if st.button("Logout", key="logout_btn"):
+        st.session_state.page = "main"
+        st.session_state.calc_display = "0"
