@@ -12,7 +12,7 @@ if "calc_display" not in st.session_state:
     st.session_state.calc_display = "0"
 
 if st.session_state.page == 'main':
-    st.title ("welcome!")
+    st.title("Welcome!")
     st.write("Please choose an option:")
 
     if st.button("Login"):
@@ -22,8 +22,7 @@ if st.session_state.page == 'main':
 
 # Login page
 elif st.session_state.page == "login":
-    st.title ("Login")
-
+    st.title("Login")
 
     # Username and password input
     username = st.text_input("Username")
@@ -59,29 +58,22 @@ elif st.session_state.page == "register":
         else:
             st.session_state.users[reg_username] = {
                 "password": reg_password,
-                "email" : reg_email
+                "email": reg_email
             }
             st.success("Registration Successful!")
-
 
     if st.button("Back"):
         st.session_state.page = "main"
 
+# ------------------------------
+# CALCULATOR PAGE
+# ------------------------------
 elif st.session_state.page == "calculator":
     st.title("Calculator")
 
-    # Display uses a DIFFERENT key so we can modify calc_display freely
-    st.text_input("Display", value=st.session_state.calc_display, disabled=True)
-
-    buttons = [
-        ["1", "2", "3"],
-        ["4", "5", "6"],
-        ["7", "8", "9"],
-        ["C", "0", "="],
-    ]
-
-    operator_buttons = ["+", "-", "*", "/"]
-
+    # -------------------------------
+    # 1. PROCESS BUTTON CLICKS FIRST
+    # -------------------------------
     def pressButton(value):
         if value == "C":
             st.session_state.calc_display = "0"
@@ -96,25 +88,56 @@ elif st.session_state.page == "calculator":
             else:
                 st.session_state.calc_display += value
 
-        # After changing the value, push it to the display widget
-        st.session_state.display_box = st.session_state.calc_display
+    # Hidden triggers for clicks
+    for r, row in enumerate([
+        ["1", "2", "3"],
+        ["4", "5", "6"],
+        ["7", "8", "9"],
+        ["C", "0", "="],
+    ]):
+        for c, label in enumerate(row):
+            if st.session_state.get(f"btn_trigger_{r}_{c}", False):
+                pressButton(label)
+                st.session_state[f"btn_trigger_{r}_{c}"] = False
 
-    # Number buttons
+    for i, op in enumerate(["+", "-", "*", "/"]):
+        if st.session_state.get(f"op_trigger_{i}", False):
+            pressButton(op)
+            st.session_state[f"op_trigger_{i}"] = False
+
+    # -------------------------------
+    # 2. DRAW THE DISPLAY AFTER LOGIC
+    # -------------------------------
+    st.text_input("Display", value=st.session_state.calc_display, disabled=True)
+
+    # -------------------------------
+    # 3. DRAW BUTTON GRID
+    # -------------------------------
+    buttons = [
+        ["1", "2", "3"],
+        ["4", "5", "6"],
+        ["7", "8", "9"],
+        ["C", "0", "="],
+    ]
+
     for r, row in enumerate(buttons):
         cols = st.columns(3)
         for c, label in enumerate(row):
-            if cols[c].button(label, key=f"btn_{r}_{c}_{label}"):
-                pressButton(label)
+            if cols[c].button(label, key=f"btn_{r}_{c}"):
+                st.session_state[f"btn_trigger_{r}_{c}"] = True
+                st.rerun()
 
-    st.write("### Operators")
+    operator_buttons = ["+", "-", "*", "/"]
 
-    # Operator buttons
     op_cols = st.columns(4)
-    for i, op in enumerate(operator_buttons):
-        if op_cols[i].button(op, key=f"op_btn_{i}_{op}"):
-            pressButton(op)
 
-    # Logout button
+    for i, op in enumerate(operator_buttons):
+        safe_label = f"\\{op}"  # escape markdown so it displays properly
+        if op_cols[i].button(safe_label, key=f"op_btn_{i}_{op}"):
+            pressButton(op)
+            st.rerun()
+
     if st.button("Logout", key="logout_btn"):
         st.session_state.page = "main"
         st.session_state.calc_display = "0"
+        st.rerun()
