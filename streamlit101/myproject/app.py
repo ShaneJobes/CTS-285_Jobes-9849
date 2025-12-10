@@ -61,6 +61,9 @@ elif st.session_state.page == "register":
                 "email": reg_email
             }
             st.success("Registration Successful!")
+    
+    if st.button("Login"):
+        st.session_state.page = "login"
 
     if st.button("Back"):
         st.session_state.page = "main"
